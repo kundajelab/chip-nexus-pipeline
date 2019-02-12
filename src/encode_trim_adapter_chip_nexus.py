@@ -102,7 +102,7 @@ def trim_adapter_se(fastq, adapter, barcodes, min_overlap, min_trim_len, err_rat
         #         randombarcode)
         # cmd += 'cutadapt {} {} -e {} -a {} -a {} -a {} -a {} -a {} - | gzip -nc > {}'
         # cmd = cmd.format(
-        #     fastq,            
+        #     fastq,
         #     '-O {}'.format(min_overlap) if min_overlap > 0 else '',
         #     '-m {}'.format(min_trim_len) if min_trim_len > 0 else '',
         #     err_rate,
