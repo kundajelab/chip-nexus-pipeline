@@ -83,7 +83,7 @@ def parse_arguments(debug=False):
     return args, adapters
 
 def trim_adapter_se(fastq, adapter, barcodes, min_overlap, min_trim_len, err_rate,
-    trim, keep, randombarcode, out_dir):
+    trim, keep, randombarcode, nth, out_dir):
     if adapter:
         prefix = os.path.join(out_dir,
             os.path.basename(strip_ext_fastq(fastq)))
@@ -94,20 +94,38 @@ def trim_adapter_se(fastq, adapter, barcodes, min_overlap, min_trim_len, err_rat
         adapter3 = adapter[3:]
         adapter4 = adapter[4:]
 
-        cmd = 'zcat -f {} | '
+        # cmd = 'zcat -f {} | '
+        # if barcodes:
+        #     cmd += 'nimnexus trim {} -t {} -k {} -r {} | '.format(barcodes,
+        #         trim,
+        #         keep,
+        #         randombarcode)
+        # cmd += 'cutadapt {} {} -e {} -a {} -a {} -a {} -a {} -a {} - | gzip -nc > {}'
+        # cmd = cmd.format(
+        #     fastq,            
+        #     '-O {}'.format(min_overlap) if min_overlap > 0 else '',
+        #     '-m {}'.format(min_trim_len) if min_trim_len > 0 else '',
+        #     err_rate,
+        #     adapter, adapter1, adapter2, adapter3, adapter4,
+        #     trimmed)     
+
+        cmd = 'pigz -cd {} | '
         if barcodes:
             cmd += 'nimnexus trim {} -t {} -k {} -r {} | '.format(barcodes,
                 trim,
                 keep,
                 randombarcode)
-        cmd += 'cutadapt {} {} -e {} -a {} -a {} -a {} -a {} -a {} - | gzip -nc > {}'
+        cmd += 'parallel -j {} --pipe -L 4 --block 10M '
+        cmd += 'cutadapt {} {} -e {} -a {} -a {} -a {} -a {} -a {} - | pigz -nc > {}'
         cmd = cmd.format(
-            fastq,            
+            fastq,
+            nth,
             '-O {}'.format(min_overlap) if min_overlap > 0 else '',
             '-m {}'.format(min_trim_len) if min_trim_len > 0 else '',
             err_rate,
             adapter, adapter1, adapter2, adapter3, adapter4,
             trimmed)     
+
         run_shell_cmd(cmd)
         return trimmed
     else:
@@ -119,7 +137,7 @@ def trim_adapter_se(fastq, adapter, barcodes, min_overlap, min_trim_len, err_rat
 
 def trim_adapter_pe(fastq1, fastq2, adapter1, adapter2, barcodes,
         min_overlap, min_trim_len, err_rate,
-        trim, keep, randombarcode, out_dir):
+        trim, keep, randombarcode, nth, out_dir):
     raise NotImplementedError
 
 # WDL glob() globs in an alphabetical order
@@ -152,75 +170,48 @@ def main():
     # declare temp arrays
     temp_files = [] # files to deleted later at the end
 
-    log.info('Initializing multi-threading...')
-    if args.paired_end:
-        num_process = min(2*len(args.fastqs),args.nth)
-    else:
-        num_process = min(len(args.fastqs),args.nth)
-    log.info('Number of threads={}.'.format(num_process))
-    pool = multiprocessing.Pool(num_process)
+    trimmed_fastqs_R1 = []
+    trimmed_fastqs_R2 = []
 
-    log.info('Trimming adapters...')
-    ret_vals = []
+    log.info('Trimming adapters and merging fastqs...')
     for i in range(len(args.fastqs)):
         # for each fastq to be merged later
         fastqs = args.fastqs[i] # R1 and R2
         adapters_ = adapters[i]
         if args.paired_end:
-            ret_val = pool.apply_async(
-                trim_adapter_pe,(
-                    fastqs[0], fastqs[1], 
-                    adapters_[0], adapters_[1],
-                    args.barcodes,
-                    args.min_overlap,
-                    args.min_trim_len,
-                    args.err_rate,
-                    args.trim, args.keep, args.randombarcode,
-                    args.out_dir))
-        else:
-            ret_val = pool.apply_async(
-                trim_adapter_se,(
-                    fastqs[0],
-                    adapters_[0],
-                    args.barcodes,
-                    args.min_overlap,
-                    args.min_trim_len,
-                    args.err_rate,
-                    args.trim, args.keep, args.randombarcode,
-                    args.out_dir))
-        ret_vals.append(ret_val)
-
-    # update array with trimmed fastqs
-    trimmed_fastqs_R1 = []
-    trimmed_fastqs_R2 = []
-    for i, ret_val in enumerate(ret_vals):
-        if args.paired_end:
-            fastqs = ret_val.get(BIG_INT)
+            fastqs = trim_adapter_pe(
+                fastqs[0], fastqs[1], 
+                adapters_[0], adapters_[1],
+                args.barcodes,
+                args.min_overlap,
+                args.min_trim_len,
+                args.err_rate,
+                args.trim, args.keep, args.randombarcode,
+                args.nth,
+                args.out_dir)
             trimmed_fastqs_R1.append(fastqs[0])
             trimmed_fastqs_R2.append(fastqs[1])
         else:
-            fastq = ret_val.get(BIG_INT)
+            fastq = trim_adapter_se(
+                fastqs[0],
+                adapters_[0],
+                args.barcodes,
+                args.min_overlap,
+                args.min_trim_len,
+                args.err_rate,
+                args.trim, args.keep, args.randombarcode,
+                args.nth,
+                args.out_dir)
             trimmed_fastqs_R1.append(fastq)
 
-    log.info('Merging fastqs...')
     log.info('R1 to be merged: {}'.format(trimmed_fastqs_R1))
-    ret_val1 = pool.apply_async(merge_fastqs,
-                    (trimmed_fastqs_R1, 'R1', args.out_dir,))
+    R1_merged = merge_fastqs(trimmed_fastqs_R1, 'R1', args.out_dir)
+    temp_files.extend(trimmed_fastqs_R1)
+
     if args.paired_end:
         log.info('R2 to be merged: {}'.format(trimmed_fastqs_R2))
-        ret_val2 = pool.apply_async(merge_fastqs,
-                        (trimmed_fastqs_R2, 'R2', args.out_dir,))
-    # gather
-    R1_merged = ret_val1.get(BIG_INT)
-    if args.paired_end:
-        R2_merged = ret_val2.get(BIG_INT)
-
-    temp_files.extend(trimmed_fastqs_R1)
-    temp_files.extend(trimmed_fastqs_R2)
-
-    log.info('Closing multi-threading...')
-    pool.close()
-    pool.join()
+        R2_merged = merge_fastqs(trimmed_fastqs_R2, 'R2', args.out_dir)
+        temp_files.extend(trimmed_fastqs_R2)
 
     log.info('Removing temporary files...')
     rm_f(temp_files)

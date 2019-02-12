@@ -1,11 +1,12 @@
 {
     "chip_nexus.genome_tsv" : "/mnt/data/pipeline_genome_data/hg38/hg38_klab.tsv",
     "chip_nexus.adapter" : "AGATCGGAAGAGCACACGTCTGGATCCACGACGCTCTTCC",
+    "chip_nexus.barcodes" : "CTGA,TGAC,GACT,ACTG",
     "chip_nexus.fastqs_rep1_R1" : ["/mnt/data/chip-nexus-test-data/mesc_oct4_nexus_1.fastq.gz"],
     "chip_nexus.fastqs_rep2_R1" : ["/mnt/data/chip-nexus-test-data/mesc_oct4_nexus_2.fastq.gz"],
     "chip_nexus.fastqs_rep3_R1" : ["/mnt/data/chip-nexus-test-data/mesc_oct4_nexus_3.fastq.gz"],
     "chip_nexus.fastqs_rep4_R1" : ["/mnt/data/chip-nexus-test-data/mesc_oct4_nexus_4.fastq.gz"],
-
+    "chip_nexus.enable_count_signal_track" : true,
     "chip_nexus.title" : "test",
     "chip_nexus.description" : "test"
 }
