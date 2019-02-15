@@ -109,7 +109,7 @@ def pbc_qc_se(filt_bam, nodup_bam, mito_chr_name, out_dir):
     m0 = int(run_shell_cmd('samtools view {} | grep -v "\\b{}\\b" | wc -l'.format(nodup_bam, mito_chr_name)))
     m0_mt = 0 if mt==0.0 else m0/float(mt)
     with open(pbc_qc, 'w') as fp:
-        fp.write("{}\t{}\tN/A\tN/A\t{}\tN/A\tN/A\n".format(mt, m0, m0_mt, pbc_qc))
+        fp.write("{}\t{}\tN/A\tN/A\t{}\tN/A\tN/A\n".format(mt, m0, m0_mt))
 
     # cmd2 = 'bedtools bamtobed -i {} | '
     # cmd2 += 'awk \'BEGIN{{OFS="\\t"}}{{print $1,$2,$3,$6}}\' | '
