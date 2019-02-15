@@ -11,6 +11,7 @@ workflow chip_nexus {
 	File genome_tsv 			# reference genome data TSV file including
 								# all important genome specific data file paths and parameters
 	### optional but important
+	String aligner = 'bowtie' 		# bowtie or bwa
 	Boolean align_only = false 		# disable all post-align analysis (peak-calling, overlap, idr, ...)
 	Boolean true_rep_only = false 	# disable all analyses for pseudo replicates
 									# overlap and idr will also be disabled
@@ -22,6 +23,7 @@ workflow chip_nexus {
 	Int nimnexus_keep = 18			# Minimum number of bases required after barcode to keep read (nimnexus -k)
 	Int nimnexus_randombarcode = 5	# Number of bases at the start of each read used for random barcode (nimnexus -r)
 
+	String bowtie_param = '--chunkmbs 512 -k 1 -m 1 -v 2 --best --strata' # Parameters for bowtie command line
 	Int mapq_thresh = 30			# threshold for low MAPQ reads removal
 	Boolean no_dup_removal = false	# no dupe reads removal when filtering BAM
 									# dup.qc and pbc.qc will be empty files
@@ -54,6 +56,11 @@ workflow chip_nexus {
 	Int bwa_mem_mb = 20000
 	Int bwa_time_hr = 48
 	String bwa_disks = "local-disk 100 HDD"
+
+	Int bowtie_cpu = 4
+	Int bowtie_mem_mb = 20000
+	Int bowtie_time_hr = 48
+	String bowtie_disks = "local-disk 100 HDD"
 
 	Int filter_cpu = 2
 	Int filter_mem_mb = 20000
@@ -146,6 +153,7 @@ workflow chip_nexus {
 	### read genome data and paths
 	call read_genome_tsv { input:genome_tsv = genome_tsv }
 	File bwa_idx_tar = read_genome_tsv.genome['bwa_idx_tar']
+	File bowtie_idx_tar = read_genome_tsv.genome['bowtie_idx_tar']
 	File blacklist = read_genome_tsv.genome['blacklist']
 	File chrsz = read_genome_tsv.genome['chrsz']
 	String gensz = read_genome_tsv.genome['gensz']
@@ -196,22 +204,35 @@ workflow chip_nexus {
 			time_hr = trim_adapter_time_hr,
 			disks = trim_adapter_disks,
 		}
-
-		# align merged fastqs with bwa
-		call bwa { input :
-			idx_tar = bwa_idx_tar,
-			fastqs = trim_adapter.trimmed_merged_fastqs, #[R1,R2]			
-			paired_end = false,
-			cpu = bwa_cpu,
-			mem_mb = bwa_mem_mb,
-			time_hr = bwa_time_hr,
-			disks = bwa_disks,
+		if ( aligner=='bwa' ) { # align merged fastqs with bwa		
+			call bwa { input :
+				idx_tar = bwa_idx_tar,
+				fastqs = trim_adapter.trimmed_merged_fastqs, #[R1,R2]
+				paired_end = false,
+				cpu = bwa_cpu,
+				mem_mb = bwa_mem_mb,
+				time_hr = bwa_time_hr,
+				disks = bwa_disks,
+			}
+		}
+		if ( aligner=='bowtie' ) { # align merged fastqs with bowtie
+			call bowtie { input :
+				idx_tar = bowtie_idx_tar,
+				fastqs = trim_adapter.trimmed_merged_fastqs, #[R1,R2]
+				paired_end = false,
+				param = bowtie_param,
+				cpu = bowtie_cpu,
+				mem_mb = bowtie_mem_mb,
+				time_hr = bowtie_time_hr,
+				disks = bowtie_disks,
+			}
 		}
 	}
 
-	Array[File] bams_ = flatten([bwa.bam, bams])
+	Array[File?] bams_ = if (aligner=='bwa') then flatten([bwa.bam, bams])
+		else flatten([bowtie.bam, bams])
 	scatter(bam in if need_to_process_bam then bams_ else []) {
-		# filter/dedup bam
+		# filter/dedup bam		
 		call filter { input :
 			bam = bam,
 			paired_end = false,
@@ -549,7 +570,10 @@ workflow chip_nexus {
 		}
 	}
 
-	Array[File] flagstat_qcs_ = flatten([flagstat_qcs, bwa.flagstat_qc])
+	#Array[File?] flagstat_qcs_ = flatten([flagstat_qcs, bwa.flagstat_qc, bowtie.flagstat_qc])
+	Array[File?] flagstat_qcs_ = if (aligner=='bwa') then flatten([flagstat_qcs, bwa.flagstat_qc])
+		else flatten([flagstat_qcs, bowtie.flagstat_qc])
+
 	Array[File] pbc_qcs_ = flatten([pbc_qcs, filter.pbc_qc])
 	Array[File] nodup_flagstat_qcs_ = flatten([nodup_flagstat_qcs, filter.flagstat_qc])
 
@@ -639,7 +663,7 @@ task trim_adapter { # trim adapters and merge trimmed fastqs
 		# unexpected behavior of a workflow
 		# so we prepend merge_fastqs_'end'_ (R1 or R2)
 		# to the basename of original filename
-		# this prefix will be later stripped in bowtie2 task
+		# this prefix will be later stripped in bwa/bowtie task
 		Array[File] trimmed_merged_fastqs = glob("merge_fastqs_R?_*.fastq.gz")
 	}
 	runtime {
@@ -665,6 +689,39 @@ task bwa {
 			${idx_tar} \
 			${sep=' ' fastqs} \
 			${if paired_end then "--paired-end" else ""} \
+			${"--nth " + cpu}
+	}
+	output {
+		File bam = glob("*.bam")[0]
+		File bai = glob("*.bai")[0]
+		File flagstat_qc = glob("*.flagstat.qc")[0]
+	}
+	runtime {
+		cpu : cpu
+		memory : "${mem_mb} MB"
+		time : time_hr
+		disks : disks
+		preemptible: 0
+	}
+}
+
+task bowtie {
+	File idx_tar 		# reference bowtie index tar
+	Array[File] fastqs 	# [read_end_id]
+	String param
+	Boolean paired_end
+
+	Int cpu
+	Int mem_mb
+	Int time_hr
+	String disks
+
+	command {
+		python $(which encode_bowtie.py) \
+			${idx_tar} \
+			${sep=' ' fastqs} \
+			${if paired_end then "--paired-end" else ""} \
+			${"--param ' " + param + "'"} \
 			${"--nth " + cpu}
 	}
 	output {
@@ -1008,7 +1065,7 @@ task qc_report {
 	Int? macs2_cap_num_peak
 	Float idr_thresh
 	# QCs
-	Array[File]? flagstat_qcs
+	Array[File?]? flagstat_qcs
 	Array[File]? nodup_flagstat_qcs
 	Array[File]? pbc_qcs
 	File? jsd_plot 

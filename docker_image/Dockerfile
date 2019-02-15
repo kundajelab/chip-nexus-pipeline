@@ -1,5 +1,5 @@
 ############################################################
-# Dockerfile for ENCODE DCC chip-seq-pipeline
+# Dockerfile for ENCODE DCC chip-nexus-pipeline
 # Based on Ubuntu 16.04
 ############################################################
 
@@ -139,7 +139,9 @@ RUN pip install --no-cache-dir --no-dependencies cutadapt==1.9.1
 RUN git clone --branch 0.1.1 --single-branch https://github.com/Avsecz/nimnexus && \
 ENV PATH="/software/nimnexus:${PATH}"
 
-RUN git clone 
+# Install Bowtie 1.1.2
+RUN wget https://github.com/BenLangmead/bowtie/archive/v1.1.2.tar.gz && tar zxvf v1.1.2.tar.gz && \
+    cd bowtie-1.1.2/ && make install && cd .. && rm -rf v1.1.2.tar.gz bowtie-1.1.2
 
 # Prevent conflict with locally installed python outside of singularity container
 ENV PYTHONNOUSERSITE=True

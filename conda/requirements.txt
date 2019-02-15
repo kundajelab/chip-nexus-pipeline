@@ -1,6 +1,7 @@
 # repos: biconda, conda-forge, defaults, r
 
 pigz
+bowtie=1.1.2
 cutadapt==1.9.1
 nimnexus==0.1.1
 samtools ==1.2

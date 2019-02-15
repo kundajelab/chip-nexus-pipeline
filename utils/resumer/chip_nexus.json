@@ -4,6 +4,10 @@
             "bam" : "chip_nexus.bams",
             "flagstat_qc" : "chip_nexus.flagstat_qcs"
         },
+        "chip_nexus.bowtie" : {
+            "bam" : "chip_nexus.bams",
+            "flagstat_qc" : "chip_nexus.flagstat_qcs"
+        },
         "chip_nexus.filter" : {
             "nodup_bam" : "chip_nexus.nodup_bams",
             "flagstat_qc" : "chip_nexus.nodup_flagstat_qcs",
