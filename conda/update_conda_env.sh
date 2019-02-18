@@ -2,7 +2,7 @@
 # Stop on error
 set -e
 
-CONDA_ENV=encode-chip-nexus-pipeline
+CONDA_ENV=chip-nexus-pipeline
 
 SH_SCRIPT_DIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 

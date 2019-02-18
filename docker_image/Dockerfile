@@ -135,8 +135,10 @@ RUN wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bedToBigBed && ch
 # Install cutadapt 1.9.1
 RUN pip install --no-cache-dir --no-dependencies cutadapt==1.9.1 
 
-# Install nimnexus 0.1.1
+# Install nimnexus 0.1.1 (with htslib 1.8. hstlib 1.2 didn't work)
 RUN git clone --branch 0.1.1 --single-branch https://github.com/Avsecz/nimnexus && \
+    git clone --branch 1.8 --single-branch https://github.com/samtools/htslib.git && \
+    cd htslib && make && make install && cd ../ && rm -rf htslib*
 ENV PATH="/software/nimnexus:${PATH}"
 
 # Install Bowtie 1.1.2
@@ -146,15 +148,15 @@ RUN wget https://github.com/BenLangmead/bowtie/archive/v1.1.2.tar.gz && tar zxvf
 # Prevent conflict with locally installed python outside of singularity container
 ENV PYTHONNOUSERSITE=True
 
-# Get ENCODE chip-seq-pipeline container repository
-# This COPY assumes the build context is the root of the chip-seq-pipeline repo
+# Get ENCODE chip-nexus-pipeline container repository
+# This COPY assumes the build context is the root of the chip-nexus-pipeline repo
 # and it gets whatever is checked out plus local modifications
 # so the buildling command should:
 # cd [GIT_REPO_DIR] && docker build -f docker_image/Dockerfile .
-RUN mkdir -p chip-seq-pipeline/src
-COPY src chip-seq-pipeline/src/
-COPY chip.wdl chip-seq-pipeline/
-ENV PATH="/software/chip-seq-pipeline:/software/chip-seq-pipeline/src:${PATH}"
+RUN mkdir -p chip-nexus-pipeline/src
+COPY src chip-nexus-pipeline/src/
+COPY chip_nexus.wdl chip-nexus-pipeline/
+ENV PATH="/software/chip-nexus-pipeline:/software/chip-nexus-pipeline/src:${PATH}"
 
 # make some temporary directories
 RUN for i in $(seq 0 9); do mkdir -p /mnt/ext_$i; done

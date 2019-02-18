@@ -2,8 +2,8 @@
 # Stop on error
 set -e
 
-CONDA_ENV=encode-chip-nexus-pipeline
-CONDA_ENV_PY3=encode-chip-nexus-pipeline-python3
+CONDA_ENV=chip-nexus-pipeline
+CONDA_ENV_PY3=chip-nexus-pipeline-python3
 
 if which conda; then
   echo "=== Found Conda ($(conda --version))."
