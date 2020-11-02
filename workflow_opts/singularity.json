@@ -1,5 +1,0 @@
-{
-    "default_runtime_attributes" : {
-        "singularity_container" : "~/.singularity/chip-nexus-pipeline-v1.1.6.simg"
-    }
-}
