@@ -1,11 +1,12 @@
 {
-    "chip_nexus.genome_tsv" : "/mnt/data/pipeline_genome_data/mm10/mm10_klab.tsv",
+    "chip_nexus.genome_tsv" : "/mnt/data/pipeline_genome_data/genome_tsv/v3/mm10.tsv",
+    "chip_nexus.bowtie_idx_tar" : "/oak/stanford/groups/akundaje/avsec/anno/encode/mm10/bowtie_index/mm10_no_alt_analysis_set_ENCODE.tar",
     "chip_nexus.adapter" : "AGATCGGAAGAGCACACGTCTGGATCCACGACGCTCTTCC",
     "chip_nexus.barcodes" : "CTGA,TGAC,GACT,ACTG",
-    "chip_nexus.fastqs_rep1_R1" : ["/mnt/data/chip-nexus-test-data/mesc_oct4_nexus_1.fastq.gz"],
-    "chip_nexus.fastqs_rep2_R1" : ["/mnt/data/chip-nexus-test-data/mesc_oct4_nexus_2.fastq.gz"],
-    "chip_nexus.fastqs_rep3_R1" : ["/mnt/data/chip-nexus-test-data/mesc_oct4_nexus_3.fastq.gz"],
-    "chip_nexus.fastqs_rep4_R1" : ["/mnt/data/chip-nexus-test-data/mesc_oct4_nexus_4.fastq.gz"],
+    "chip_nexus.fastqs_rep1_R1" : ["/oak/stanford/groups/akundaje/amr1/bpnet/julia-lab-chipnexus/mesc_oct4_nexus_1.fastq.gz"],
+    "chip_nexus.fastqs_rep2_R1" : ["/oak/stanford/groups/akundaje/amr1/bpnet/julia-lab-chipnexus/mesc_oct4_nexus_2.fastq.gz"],
+    "chip_nexus.fastqs_rep3_R1" : ["/oak/stanford/groups/akundaje/amr1/bpnet/julia-lab-chipnexus/mesc_oct4_nexus_3.fastq.gz"],
+    "chip_nexus.fastqs_rep4_R1" : ["/oak/stanford/groups/akundaje/amr1/bpnet/julia-lab-chipnexus/mesc_oct4_nexus_4.fastq.gz"],
     "chip_nexus.enable_count_signal_track" : true,
     "chip_nexus.title" : "test",
     "chip_nexus.description" : "test"

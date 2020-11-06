@@ -5,7 +5,6 @@
 
 import sys
 import os
-import re
 import argparse
 from encode_lib_common import (
     log, ls_l, mkdir_p, rm_f, run_shell_cmd, strip_ext_fastq, strip_ext_tar,
@@ -55,24 +54,37 @@ def parse_arguments():
 
 def bowtie_se(fastq, ref_index_prefix, param, nth, mem_gb, out_dir):
     basename = os.path.basename(strip_ext_fastq(fastq))
-    prefix = os.path.join(out_dir,
-        strip_merge_fastqs_prefix(basename))        
-    unzipped_fq = '{}.tmp'.format(prefix)
+    prefix = os.path.join(out_dir, basename)
     tmp_bam = '{}.bam'.format(prefix)
 
+    temp_files = []
+
+    if fastq.endswith('.gz'):
+        unzipped_fastq = '{}.tmp.fastq'.format(prefix)
+        run_shell_cmd(
+            'zcat -f {fastq} > {unzipped_fastq}'.format(
+                fastq=fastq,
+                unzipped_fastq=unzipped_fastq,
+            )
+        )
+        temp_files.append(unzipped_fastq)
+    else:
+        unzipped_fastq = fastq
+
     run_shell_cmd(
-        'bowtie -S -p {nth} {param} {index} {fastq} | '
+        'bowtie -S -p {nth} {param} -x {index} {fastq} | '
         'samtools view -1 -F 4 -S /dev/stdin > {tmp_bam}'.format(
             nth=nth,
             param=param,
             index=ref_index_prefix,
-            fastq=unzipped_fq,
+            fastq=unzipped_fastq,
             tmp_bam=tmp_bam,                        
         )
     )
+    temp_files.append(tmp_bam)
 
     bam = samtools_sort(tmp_bam, nth, mem_gb, out_dir)
-    rm_f([tmp_bam, unzipped_fq])
+    rm_f(temp_files)
 
     return bam
 
@@ -91,15 +103,15 @@ def chk_bowtie_index(prefix):
 def find_bowtie_index_prefix(d):
     """
     Returns:
-        prefix of BWA index. e.g. returns PREFIX if PREFIX.sa exists
+        prefix of bowtie index. e.g. returns PREFIX if PREFIX.sa exists
     Args:
-        d: directory to search for .1.bt2 or .1.bt2l file
+        d: directory to search for .1.ebwt.
     """
     if d == '':
         d = '.'
     for f in os.listdir(d):
-        if f.endswith('.1.ebwt'):
-            return re.sub('\.1\.ebwt$', '', f)
+        if f.endswith('.1.ebwt') and not f.endswith('.rev.1.ebwt'):
+            return f.replace('.1.ebwt', '', 1)
 
 
 def main():
@@ -112,14 +124,6 @@ def main():
     # declare temp arrays
     temp_files = [] # files to deleted later at the end
 
-    # generate read length file
-    log.info('Generating read length file...')
-    R1_read_length_file = make_read_length_file(
-                            args.fastqs[0], args.out_dir)
-    if args.paired_end:
-        R2_read_length_file = make_read_length_file(
-                            args.fastqs[1], args.out_dir)
-    
     # if bowtie index is tarball then unpack it
     if args.bowtie_index_prefix_or_tar.endswith('.tar') or \
             args.bowtie_index_prefix_or_tar.endswith('.tar.gz'):    

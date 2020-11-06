@@ -186,6 +186,9 @@ def main():
 
     log.info('List all files in output directory...')
     ls_l(args.out_dir)
+    ls_l(os.path.join(args.out_dir, 'R1'))
+    if args.paired_end:
+        ls_l(os.path.join(args.out_dir, 'R2'))
 
     log.info('All done.')
 

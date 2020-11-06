@@ -117,12 +117,12 @@ workflow chip_nexus {
 
         # group: adapter_trimming
         String cutadapt_param = '-e 0.2 -m 22 -O 4'
-        String? adapter = 'AGATCGGAAGAGCACACGTCTGGATCCACGACGCTCTTCC'
+        String adapter = 'AGATCGGAAGAGCACACGTCTGGATCCACGACGCTCTTCC'
+        String? barcodes
 
         # group: alignment
         String nimnexus_param = '-t 0 -k 18 -r 5'
         String bowtie_param = '--chunkmbs 512 -k 1 -m 1 -v 2 --best --strata'
-        String dup_marker = 'picard'
         Boolean no_dup_removal = false
         Int mapq_thresh = 30
         Array[String] filter_chrs = ['chrM', 'MT']
@@ -130,9 +130,8 @@ workflow chip_nexus {
         Array[Int?] read_len = []
 
         # group: peak_calling
-        Int cap_num_peak = 300000
+        Int cap_num_peak = 500000
         Float pval_thresh = 0.01
-        Int smooth_win = 150
         Float idr_thresh = 0.05
 
         # group: resource_parameter
@@ -438,7 +437,7 @@ workflow chip_nexus {
             group: 'adapter_trimming',
             help: 'It is -e 0.2 -m 22 -O 4 by default. -e: Maximum allowed adapter error rate (no. errors divided by the length of the matching adapter region), -m: Minimum trim length (throwing away processed reads shorter than this), -O: Minimum overlap.'
         }
-        nimnexus_param {
+        nimnexus_param: {
             description: 'Parameters for nimnexus.',
             group: 'adapter_trimming',
             help: 'It is -t 0 -k 18 -r 5 by default. -t: Pre-trim all reads by this length before processing, -k: Minimum number of bases required after barcode to keep read. -r: Number of bases at the start of each read used for random barcode.'
@@ -448,15 +447,10 @@ workflow chip_nexus {
             group: 'adapter_trimming',
             help: 'Define if all FASTQs have the same adapter sequence.'
         }
-        bowtie_param {
+        bowtie_param: {
             description: 'Parameters for bowtie (not bowtie2).',
             group: 'alignment',
         	help: 'It is --chunkmbs 512 -k 1 -m 1 -v 2 --best --strata by default.'
-        }
-        dup_marker: {
-            description: 'Marker for duplicate reads. picard or sambamba.',
-            group: 'alignment',
-            help: 'picard for Picard MarkDuplicates or sambamba for sambamba markdup.'
         }
         no_dup_removal: {
             description: 'Disable removal of duplicate reads during filtering BAM.',
@@ -492,11 +486,6 @@ workflow chip_nexus {
             description: 'p-value Threshold for MACS2 peak caller.',
             group: 'peak_calling',
             help: 'macs2 callpeak -p'
-        }
-        smooth_win: {
-            description: 'Size of smoothing windows for MACS2 peak caller.',
-            group: 'peak_calling',
-            help: 'This will be used for both generating MACS2 peaks/signal tracks.'
         }
         idr_thresh: {
             description: 'IDR threshold.',
@@ -781,7 +770,6 @@ workflow chip_nexus {
             call filter { input :
                 bam = bam_,
                 paired_end = paired_end_,
-                dup_marker = dup_marker,
                 mapq_thresh = mapq_thresh_,
                 filter_chrs = filter_chrs,
                 chrsz = chrsz_,
@@ -821,7 +809,6 @@ workflow chip_nexus {
                 gensz = gensz_,
                 chrsz = chrsz_,
                 pval_thresh = pval_thresh,
-                smooth_win = smooth_win,
 
                 mem_factor = macs2_signal_track_mem_factor,
                 disk_factor = macs2_signal_track_disk_factor,
@@ -841,7 +828,6 @@ workflow chip_nexus {
                 chrsz = chrsz_,
                 cap_num_peak = cap_num_peak_,
                 pval_thresh = pval_thresh,
-                smooth_win = smooth_win,
                 blacklist = blacklist_,
                 regex_bfilt_peak_chr_name = regex_bfilt_peak_chr_name_,
 
@@ -876,7 +862,6 @@ workflow chip_nexus {
                 chrsz = chrsz_,
                 cap_num_peak = cap_num_peak_,
                 pval_thresh = pval_thresh,
-                smooth_win = smooth_win,
                 blacklist = blacklist_,
                 regex_bfilt_peak_chr_name = regex_bfilt_peak_chr_name_,
 
@@ -902,7 +887,6 @@ workflow chip_nexus {
                 chrsz = chrsz_,
                 cap_num_peak = cap_num_peak_,
                 pval_thresh = pval_thresh,
-                smooth_win = smooth_win,
                 blacklist = blacklist_,
                 regex_bfilt_peak_chr_name = regex_bfilt_peak_chr_name_,
 
@@ -996,7 +980,6 @@ workflow chip_nexus {
             chrsz = chrsz_,
             cap_num_peak = cap_num_peak_,
             pval_thresh = pval_thresh,
-            smooth_win = smooth_win,
             blacklist = blacklist_,
             regex_bfilt_peak_chr_name = regex_bfilt_peak_chr_name_,
 
@@ -1024,7 +1007,6 @@ workflow chip_nexus {
             gensz = gensz_,
             chrsz = chrsz_,
             pval_thresh = pval_thresh,
-            smooth_win = smooth_win,
 
             mem_factor = macs2_signal_track_mem_factor,
             disk_factor = macs2_signal_track_disk_factor,
@@ -1061,7 +1043,6 @@ workflow chip_nexus {
             chrsz = chrsz_,
             cap_num_peak = cap_num_peak_,
             pval_thresh = pval_thresh,
-            smooth_win = smooth_win,
             blacklist = blacklist_,
             regex_bfilt_peak_chr_name = regex_bfilt_peak_chr_name_,
 
@@ -1087,7 +1068,6 @@ workflow chip_nexus {
             chrsz = chrsz_,
             cap_num_peak = cap_num_peak_,
             pval_thresh = pval_thresh,
-            smooth_win = smooth_win,
             blacklist = blacklist_,
             regex_bfilt_peak_chr_name = regex_bfilt_peak_chr_name_,
 
@@ -1251,7 +1231,6 @@ workflow chip_nexus {
         samstat_qcs = select_all(align.samstat_qc),
         nodup_samstat_qcs = select_all(filter.samstat_qc),
 
-        dup_qcs = select_all(filter.dup_qc),
         lib_complexity_qcs = select_all(filter.lib_complexity_qc),
 
         jsd_plot = jsd.plot,
@@ -1309,7 +1288,7 @@ task align {
         Array[File] fastqs_R2
 
         String adapter
-		String? barcodes
+        String? barcodes
         Boolean paired_end
         String cutadapt_param
         String nimnexus_param
@@ -1356,8 +1335,8 @@ task align {
             ${'--adapter ' + adapter} \
             --cutadapt-param ' ${cutadapt_param}' \
             --nimnexus-param ' ${nimnexus_param}' \
-			${'--barcodes ' + barcodes} \
-			${'--nth ' + cpu}
+            ${'--barcodes ' + barcodes} \
+            ${'--nth ' + cpu}
 
         if [ '${aligner}' == 'bowtie' ]; then
             python3 $(which encode_task_bowtie_chip_nexus.py) \
@@ -1365,7 +1344,7 @@ task align {
                 R1$SUFFIX/*.fastq.gz \
                 ${if paired_end then 'R2$SUFFIX/*.fastq.gz' else ''} \
                 ${if paired_end then '--paired-end' else ''} \
-                --bowtie-param ' ${bowtie_param}' \
+                --param ' ${bowtie_param}' \
                 ${'--mem-gb ' + samtools_mem_gb} \
                 ${'--nth ' + cpu}
         else
@@ -1374,9 +1353,9 @@ task align {
                 R1$SUFFIX/*.fastq.gz \
                 ${if paired_end then 'R2$SUFFIX/*.fastq.gz' else ''} \
                 ${if paired_end then '--paired-end' else ''} \
-                ${if use_bwa_mem_for_pe then '--use-bwa-mem-for-pe' else ''} \
                 ${'--mem-gb ' + samtools_mem_gb} \
                 ${'--nth ' + cpu}
+        fi
 
         python3 $(which encode_task_post_align.py) \
             R1/*.fastq.gz $(ls *.bam) \
@@ -1428,8 +1407,6 @@ task filter {
     input {
         File? bam
         Boolean paired_end
-        String dup_marker             # picard.jar MarkDuplicates (picard) or 
-                                    # sambamba markdup (sambamba)
         Int mapq_thresh                # threshold for low MAPQ reads removal
         Array[String] filter_chrs     # chrs to be removed from final (nodup/filt) BAM
         File chrsz                    # 2-col chromosome sizes file
@@ -1452,7 +1429,6 @@ task filter {
             ${bam} \
             ${if paired_end then '--paired-end' else ''} \
             --multimapping 0 \
-            ${'--dup-marker ' + dup_marker} \
             ${'--mapq-thresh ' + mapq_thresh} \
             --filter-chrs ${sep=' ' filter_chrs} \
             ${'--chrsz ' + chrsz} \
@@ -1465,7 +1441,6 @@ task filter {
         File nodup_bam = glob('*.bam')[0]
         File nodup_bai = glob('*.bai')[0]
         File samstat_qc = glob('*.samstats.qc')[0]
-        File dup_qc = glob('*.dup.qc')[0]
         File lib_complexity_qc = glob('*.lib_complexity.qc')[0]
     }
     runtime {
@@ -1480,7 +1455,6 @@ task bam2ta {
     input {
         File? bam
         Boolean paired_end
-        Boolean disable_tn5_shift     # no tn5 shifting (it's for dnase-seq)
         String mito_chr_name         # mito chromosome name
         Int subsample                 # number of reads to subsample TAGALIGN
                                     # this affects all downstream analysis
@@ -1499,7 +1473,6 @@ task bam2ta {
         python3 $(which encode_task_bam2ta.py) \
             ${bam} \
             ${if paired_end then '--paired-end' else ''} \
-            ${if disable_tn5_shift then '--disable-tn5-shift' else ''} \
             ${'--mito-chr-name ' + mito_chr_name} \
             ${'--subsample ' + subsample} \
             ${'--mem-gb ' + samtools_mem_gb} \
@@ -1639,7 +1612,6 @@ task call_peak {
         File chrsz            # 2-col chromosome sizes file
         Int cap_num_peak    # cap number of raw peaks called from MACS2
         Float pval_thresh      # p.value threshold
-        Int smooth_win         # size of smoothing window
         File? blacklist     # blacklist BED to filter raw peaks
         String? regex_bfilt_peak_chr_name
 
@@ -1662,8 +1634,7 @@ task call_peak {
                 ${'--chrsz ' + chrsz} \
                 --fraglen 150 --shift -75 \
                 ${'--cap-num-peak ' + cap_num_peak} \
-                ${'--pval-thresh '+ pval_thresh} \
-                ${'--smooth-win '+ smooth_win}
+                ${'--pval-thresh '+ pval_thresh}
         fi
 
         python3 $(which encode_task_post_call_peak_chip.py) \
@@ -1671,6 +1642,7 @@ task call_peak {
             ${'--ta ' + ta} \
             ${'--regex-bfilt-peak-chr-name \'' + regex_bfilt_peak_chr_name + '\''} \
             ${'--chrsz ' + chrsz} \
+            --fraglen 150 \
             ${'--peak-type ' + peak_type} \
             ${'--blacklist ' + blacklist}
     }
@@ -1702,7 +1674,6 @@ task macs2_signal_track {
                             # chr. sizes file, or hs for human, ms for mouse)
         File chrsz            # 2-col chromosome sizes file
         Float pval_thresh      # p.value threshold
-        Int smooth_win         # size of smoothing window
 
         Float mem_factor
         Int time_hr
@@ -1714,12 +1685,12 @@ task macs2_signal_track {
 
     command {
         set -e
-        python3 $(which encode_task_macs2_signal_track_atac.py) \
+        python3 $(which encode_task_macs2_signal_track_chip.py) \
             ${ta} \
             ${'--gensz '+ gensz} \
             ${'--chrsz ' + chrsz} \
-            ${'--pval-thresh '+ pval_thresh} \
-            ${'--smooth-win '+ smooth_win}
+            --fraglen 150 --shift -75 \
+            ${'--pval-thresh '+ pval_thresh}
     }
     output {
         File pval_bw = glob('*.pval.signal.bigwig')[0]
@@ -1974,10 +1945,8 @@ task qc_report {
         Float idr_thresh
         Float pval_thresh
         # QCs
-        Array[File] frac_mito_qcs
         Array[File] samstat_qcs
         Array[File] nodup_samstat_qcs
-        Array[File] dup_qcs
         Array[File] lib_complexity_qcs
         File? jsd_plot
         Array[File]? jsd_qcs
@@ -2033,10 +2002,8 @@ task qc_report {
             ${'--cap-num-peak ' + cap_num_peak} \
             --idr-thresh ${idr_thresh} \
             --pval-thresh ${pval_thresh} \
-            --frac-mito-qcs ${sep='_:_' frac_mito_qcs} \
             --samstat-qcs ${sep='_:_' samstat_qcs} \
             --nodup-samstat-qcs ${sep='_:_' nodup_samstat_qcs} \
-            --dup-qcs ${sep='_:_' dup_qcs} \
             --lib-complexity-qcs ${sep='_:_' lib_complexity_qcs} \
             --idr-plots ${sep='_:_' idr_plots} \
             --idr-plots-pr ${sep='_:_' idr_plots_pr} \
@@ -2095,7 +2062,7 @@ task read_genome_tsv {
     command <<<
         echo "$(basename ~{genome_tsv})" > genome_name
         # create empty files for all entries
-        touch ref_fa bowtie_idx_tar chrsz gensz blacklist blacklist2
+        touch ref_fa bowtie_idx_tar bwa_idx_tar chrsz gensz blacklist blacklist2
         touch tss tss_enrich # for backward compatibility
         touch dnase prom enh
         touch mito_chr_name
@@ -2115,7 +2082,7 @@ task read_genome_tsv {
     output {
         String? genome_name = read_string('genome_name')
         String? ref_fa = if size('ref_fa')==0 then null_s else read_string('ref_fa')
-        String? ref_mito_fa = if size('ref_mito_fa')==0 then null_s else read_string('ref_mito_fa')
+        String? bwa_idx_tar = if size('bwa_idx_tar')==0 then null_s else read_string('bwa_idx_tar')
         String? bowtie_idx_tar = if size('bowtie_idx_tar')==0 then null_s else read_string('bowtie_idx_tar')
         String? chrsz = if size('chrsz')==0 then null_s else read_string('chrsz')
         String? gensz = if size('gensz')==0 then null_s else read_string('gensz')

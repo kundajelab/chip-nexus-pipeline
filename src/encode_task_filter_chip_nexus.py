@@ -59,7 +59,7 @@ def parse_arguments():
     return args
 
 
-def rm_dup_se(filt_bam, nth, out_dir):
+def nimnexus_dedup_se(filt_bam, nth, out_dir):
     prefix = os.path.join(out_dir,
         os.path.basename(strip_ext_bam(filt_bam)))
     # strip extension appended in the previous step
@@ -78,7 +78,7 @@ def rm_dup_se(filt_bam, nth, out_dir):
 def pbc_qc_se(filt_bam, nodup_bam, mito_chr_name, out_dir):
     prefix = os.path.join(out_dir,
         os.path.basename(strip_ext_bam(filt_bam)))
-    pbc_qc = '{}.pbc.qc'.format(prefix)
+    pbc_qc = '{}.lib_complexity.qc'.format(prefix)
 
     mt = int(run_shell_cmd('samtools view {} | grep -v "\\b{}\\b" | wc -l'.format(filt_bam, mito_chr_name)))
     m0 = int(run_shell_cmd('samtools view {} | grep -v "\\b{}\\b" | wc -l'.format(nodup_bam, mito_chr_name)))
@@ -139,7 +139,7 @@ def main():
         if args.paired_end:
             raise NotImplementedError('PE is not supported.')
         else:
-            nodup_bam = rm_dup_se(
+            nodup_bam = nimnexus_dedup_se(
                         filt_bam, args.nth, args.out_dir)
         temp_files.append(filt_bam)
 
